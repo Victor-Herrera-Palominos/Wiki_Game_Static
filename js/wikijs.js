@@ -1,3 +1,11 @@
+
+/**
+ * Author: Victor H
+ * Javascript(AngularJS) file which handles API calls to Wikipedia It also dynamically modifies content on 
+ * the main webpage, such as hiding and showing HTML elements for saving to the database, the dropdown menu
+ * and error messages
+ */
+
 var wikiGameApp = angular.module('wikiGame', []);
 
 wikiGameApp.factory('wikiApi', function($http, $q) {
@@ -37,7 +45,8 @@ wikiGameApp.factory('wikiApi', function($http, $q) {
 				//pageid is -1 if no wikipedia article with that title exists
 				if(pageid[0] === "-1")
 				{
-					deferred.reject([]);
+					console.log("pageid is -1");
+					deferred.reject("No such page");
 					return deferred.promise;
 				}
 				//Extracts titles from response objects and stores them in linkArray
@@ -96,8 +105,13 @@ wikiGameApp.factory('wikiApi', function($http, $q) {
 });
 
 wikiGameApp.controller('wikiCtrl', function($scope, wikiApi){
+
+	//Default values shown in input fields on site
+	$scope.startTitle = "Kevin Bacon";
+	$scope.inputDegrees = 2;
 	
-	/**
+	
+	/** 
 	 * 	Description: Calls the wikiGet function from the factory
 	 *	Return array from wikiGet is stored in $scope.allTitles to verify the next link and to include autocomplete
 	 *
@@ -110,9 +124,10 @@ wikiGameApp.controller('wikiCtrl', function($scope, wikiApi){
 		wikiApi.wikiGet(urlStart, "", [], 0, 1, 1, null).then(function(data){
 			console.log("Return from wikiGet to chosenLink");
 			$scope.allTitles = data;
-		}),(function(data){
+		}).catch(function(error){
 			$scope.articleError = false;
-			console.log("Error: " + data);
+			console.log("Error: " + error);
+			return;
 		});
 	}
 	
@@ -134,6 +149,8 @@ wikiGameApp.controller('wikiCtrl', function($scope, wikiApi){
 			if(urlTitle === $scope.endTitle)
 			{
 				$scope.linkPath = $scope.linkPath.replace("? -> ", "");	
+				$scope.hideLink = true;
+				$scope.storeDB = false;
 			}
 			else {
 				$scope.linkPath = $scope.linkPath.replace("?", urlTitle + " -> ?");	
@@ -148,20 +165,30 @@ wikiGameApp.controller('wikiCtrl', function($scope, wikiApi){
 	$scope.degreeRandom = () => {
 		//Takes user input from the 'starttitle' input in HTML
 		var urlStart = $scope.startTitle;
+		//Takes user input from the 'indegrees' input in HTML
+		var inputDeg = parseInt($scope.inputDegrees);
+		$scope.degError = true;
+		if(inputDeg === 0 || isNaN(inputDeg))
+		{
+			$scope.degError = false;
+			return;
+		}
+		
 		//Resets prior path and hides prior destination link
 		$scope.pathLink = "";
 		$scope.linkDest = true;
 		$scope.chosenLink(urlStart);
-		wikiApi.wikiGet(urlStart,"",[],0,4,1,null).then(function(data) {
+		wikiApi.wikiGet(urlStart,"",[],0,inputDeg,1,null).then(function(data) {
 			console.log("Return from wikiGet to degreeRandom");
 			//Selects random destination title from returned array
 			$scope.endTitle = data[Math.floor(Math.random() * data.length)]
 			//Shows new path and destination
 			$scope.linkPath = urlStart + " -> ? -> " + $scope.endTitle;
 			$scope.linkDest = false;
-		}),(function(data){
+		}).catch(function(error){
 			$scope.articleError = false;
-			console.log("Error: " + data);
+			console.log("Error: " + error);
+			return;
 		});
 	}
 	
@@ -214,25 +241,13 @@ wikiGameApp.controller('wikiCtrl', function($scope, wikiApi){
 		}
 	}
 	
-	var suppressInputFocusedChange = false;
-	
-	$scope.onBlur = function() {
-		
-		console.log("OnBlur act");
-		if(suppressInputFocusedChange === true) {
-			suppressInputFocusedChange = false;
-			return false;
-		}
+	$scope.onBlur = function() 
+	{
 		$scope.hideDrop = true;
 	};
 
-	$scope.onFocus = function() {
-		console.log("OnFocus act");
+	$scope.onFocus = function() 
+	{
 		$scope.hideDrop = false;
-	};
-
-	$scope.dropMouseDown = function() {
-		console.log("dropMouse act");
-		suppressInputFocusedChange = true;
 	};
 });
